@@ -45,6 +45,8 @@
         // 0000-00-00 + T + 00 or 00:00 or 00:00:00 or 00:00:00.000 + +00:00 or +0000
         isoRegex = /^\s*\d{4}-\d\d-\d\d((T| )(\d\d(:\d\d(:\d\d(\.\d\d?\d?)?)?)?)?([\+\-]\d\d:?\d\d)?)?/,
         isoFormat = 'YYYY-MM-DDTHH:mm:ssZ',
+        // for iso format weeks
+        isoWeekRegex = /^\d\d\d\d-W\d\d(-\d)?$/
 
         // iso time formats and regexes
         isoTimes = [
@@ -1013,17 +1015,16 @@
     }
 
     moment = function (input, format, lang) {
-        /**
-         * hijacking the constructor:
-         * if the input format is YYYY-WWW, then convert to days of the
-         * year set the updated format and call again to get a correct makeMoment.
-         */
-        if(typeof input == "string" && input.match(/^\d\d\d\d-W\d\d$/)){
-            var d = input.split("-W"),
-                year = parseInt(d[0]),
-                weekOfYear = parseInt(d[1]),
-                dayOfYear = (weekOfYear-1) * 7;
-            return moment(year+"-"+dayOfYear, "YYYY-DDD").startOf("week").add('d', 1);
+        // hijacking the constructor:
+        // see: http://en.wikipedia.org/wiki/ISO_week_date
+        // if the input format is YYYY-WWW(-d), then create a 'moment' fomr the year and add the extra days
+        if(typeof input == "string" && input.match(isoWeekRegex)){
+            var d = input.split("-"),
+                year = moment(d[0]),
+                week = parseInt(d[1].replace("W","")) - 1;              // round down, add days next...
+            if(year.day() > 4){ year.add("week",1); }                   // week 1 == week with the first thursday of the year
+            if(d[2]){   day = parseInt(d[2]);   }else{  day = 1;    }   // add day offset, or 1 to get the monday
+            return year.startOf("week").add("days", (week*7) + day);
         }else{
             return makeMoment({
                 _i : input,
