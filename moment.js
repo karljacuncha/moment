@@ -24,7 +24,7 @@
         aspNetTimeSpanJsonRegex = /(\-)?(\d*)?\.?(\d+)\:(\d+)\:(\d+)\.?(\d{3})?/,
 
         // format tokens
-        formattingTokens = /(\[[^\[]*\])|(\\)?(Mo|MM?M?M?|Do|DDDo|DD?D?D?|ddd?d?|do?|w[o|w]?|W[o|W]?|YYYYY|YYYY|YY|gg(ggg?)?|GG(GGG?)?|e|E|a|A|hh?|HH?|mm?|ss?|SS?S?|X|zz?|ZZ?|.)/g,
+        formattingTokens = /(\[[^\[]*\])|(\\)?(Mo|MM?M?M?|Do|DDDo|DD?D?D?|ddd?d?|do?|Www|WWW|w[o|w]?|W[o|W]?|YYYYY|YYYY|YY|gg(ggg?)?|GG(GGG?)?|e|E|a|A|hh?|HH?|mm?|ss?|SS?S?|X|zz?|ZZ?|.)/g,
         localFormattingTokens = /(\[[^\[]*\])|(\\)?(LT|LL?L?L?|l{1,4})/g,
 
         // parsing tokens
@@ -120,6 +120,12 @@
             },
             W    : function () {
                 return this.isoWeek();
+            },
+            Www    : function () {
+                return "W" + leftZeroFill(this.week(), 2);
+            },
+            WWW    : function () {
+                return "W" + leftZeroFill(this.isoWeek(), 2);
             },
             YY   : function () {
                 return leftZeroFill(this.year() % 100, 2);
@@ -1007,12 +1013,25 @@
     }
 
     moment = function (input, format, lang) {
-        return makeMoment({
-            _i : input,
-            _f : format,
-            _l : lang,
-            _isUTC : false
-        });
+        /**
+         * hijacking the constructor:
+         * if the input format is YYYY-WWW, then convert to days of the
+         * year set the updated format and call again to get a correct makeMoment.
+         */
+        if(typeof input == "string" && input.match(/^\d\d\d\d-W\d\d$/)){
+            var d = input.split("-W"),
+                year = parseInt(d[0]),
+                weekOfYear = parseInt(d[1]),
+                dayOfYear = (weekOfYear-1) * 7;
+            return moment(year+"-"+dayOfYear, "YYYY-DDD").startOf("week").add('d', 1);
+        }else{
+            return makeMoment({
+                _i : input,
+                _f : format,
+                _l : lang,
+                _isUTC : false
+            });
+        }
     };
 
     // creating with utc
